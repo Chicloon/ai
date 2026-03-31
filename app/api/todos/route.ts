@@ -7,6 +7,27 @@ function getUserId(): string | null {
   return authToken || null;
 }
 
+function serializeTodos(todos: any[]) {
+  return todos.map((t) => ({
+    id: t.id,
+    text: t.text,
+    completed: t.completed,
+    userId: t.userId,
+    createdAt: t.createdAt.toISOString(),
+    hasImage: !!t.image,
+  }));
+}
+
+const imageInclude = {
+  image: {
+    select: {
+      id: true,
+      mimeType: true,
+      size: true,
+    },
+  },
+};
+
 export async function GET() {
   const userId = getUserId();
   if (!userId) {
@@ -16,9 +37,10 @@ export async function GET() {
   const todos = await prisma.todo.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
+    include: imageInclude,
   });
 
-  return NextResponse.json(todos);
+  return NextResponse.json(serializeTodos(todos));
 }
 
 export async function POST(request: NextRequest) {
@@ -31,14 +53,21 @@ export async function POST(request: NextRequest) {
   const { action, id, text } = body;
 
   if (action === 'add') {
+    if (!text || text.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Добавьте текст или картинку' },
+        { status: 400 }
+      );
+    }
     const todo = await prisma.todo.create({
       data: { text, userId },
     });
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      include: imageInclude,
     });
-    return NextResponse.json(todos);
+    return NextResponse.json(serializeTodos(todos));
   }
 
   if (action === 'toggle') {
@@ -52,8 +81,9 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      include: imageInclude,
     });
-    return NextResponse.json(todos);
+    return NextResponse.json(serializeTodos(todos));
   }
 
   if (action === 'delete') {
@@ -64,8 +94,9 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      include: imageInclude,
     });
-    return NextResponse.json(todos);
+    return NextResponse.json(serializeTodos(todos));
   }
 
   if (action === 'edit') {
@@ -79,8 +110,9 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      include: imageInclude,
     });
-    return NextResponse.json(todos);
+    return NextResponse.json(serializeTodos(todos));
   }
 
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
