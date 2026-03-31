@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Todo } from '@/types/todo';
 
 export default function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState('');
   const [username, setUsername] = useState('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -76,6 +82,62 @@ export default function TodoList() {
     }
   }
 
+  function handleFileSelect(file: File) {
+    setUploadError(null);
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setUploadError('Поддерживаются только JPEG и PNG');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Файл слишком большой (макс. 10MB)');
+      return;
+    }
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadImage() {
+    if (!selectedFile) return;
+    setUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+
+    try {
+      const res = await fetch('/api/todos/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setUploadError(data.error || 'Ошибка загрузки');
+        return;
+      }
+      setTodos(data);
+      setPreviewImage(null);
+      setSelectedFile(null);
+    } catch {
+      setUploadError('Ошибка загрузки');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
   return (
     <div>
       <div className="header">
@@ -84,6 +146,7 @@ export default function TodoList() {
           Logout
         </button>
       </div>
+
       <input
         type="text"
         className="todo-input"
@@ -92,16 +155,57 @@ export default function TodoList() {
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
       />
+
+      <div
+        className="upload-area"
+        ref={dropZoneRef}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/jpeg,image/png"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileSelect(file);
+          }}
+        />
+        <button onClick={() => fileInputRef.current?.click()}>
+          Загрузить картинку
+        </button>
+        {uploadError && <p className="upload-error">{uploadError}</p>}
+        {previewImage && (
+          <div className="preview-container">
+            <img src={previewImage} alt="Preview" className="preview-image" />
+            <button onClick={uploadImage} disabled={uploading}>
+              {uploading ? 'Загрузка...' : 'Добавить'}
+            </button>
+            <button onClick={() => { setPreviewImage(null); setSelectedFile(null); }}>
+              Отмена
+            </button>
+          </div>
+        )}
+      </div>
+
       <ul className="todo-list">
         {todos.map((todo) => (
           <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+            {todo.hasImage && (
+              <img
+                src={`/api/todos/${todo.id}/image`}
+                alt={todo.text || 'Todo image'}
+                className="todo-image"
+              />
+            )}
+            {todo.text && <span className="todo-text">{todo.text}</span>}
             <input
               type="checkbox"
               className="todo-checkbox"
               checked={todo.completed}
               onChange={() => toggleTodo(todo.id)}
             />
-            <span className="todo-text">{todo.text}</span>
             <button className="todo-delete" onClick={() => deleteTodo(todo.id)}>
               ×
             </button>
