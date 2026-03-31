@@ -16,9 +16,20 @@ model User {
 
 model Todo {
   id        String   @id @default(cuid())
-  text      String
+  text      String?
   completed Boolean  @default(false)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  image     TodoImage?
+  createdAt DateTime @default(now())
+}
+
+model TodoImage {
+  id        String   @id @default(cuid())
+  todoId    String   @unique
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  data      Bytes
+  mimeType  String
+  size      Int
   createdAt DateTime @default(now())
 }
