@@ -12,7 +12,6 @@ export default function TodoList() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -81,7 +80,6 @@ export default function TodoList() {
       addTodo();
     }
   }
-
   function handleFileSelect(file: File) {
     setUploadError(null);
     if (!['image/jpeg', 'image/png'].includes(file.type)) {
@@ -139,29 +137,22 @@ export default function TodoList() {
   }
 
   return (
-    <div>
-      <div className="header">
-        <h1>Todo List {username && `(${username})`}</h1>
-        <button className="logout-button" onClick={logout}>
-          Logout
-        </button>
+    <div className="p-4 bg-white rounded-lg shadow-md">
+      <div className="flex items-center justify-between pb-4 mb-4 border-b">
+        <h1 className="text-xl font-semibold text-white bg-burgundy-900 rounded px-3 py-2">Todo List {username && `(${username})`}</h1>
+        <button className="border border-white text-white rounded px-3 py-1" onClick={logout}>Logout</button>
       </div>
-
-      <input
-        type="text"
-        className="todo-input"
-        placeholder="Add a todo..."
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
-
-      <div
-        className="upload-area"
-        ref={dropZoneRef}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-      >
+      <div className="mb-4">
+        <input
+          type="text"
+          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-burgundy-500"
+          placeholder="Add a todo..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </div>
+      <div className="upload-area border-2 border-dashed border-burgundy-600 rounded p-4 mb-4" onDrop={handleDrop} onDragOver={handleDragOver}>
         <input
           type="file"
           ref={fileInputRef}
@@ -172,43 +163,29 @@ export default function TodoList() {
             if (file) handleFileSelect(file);
           }}
         />
-        <button onClick={() => fileInputRef.current?.click()}>
-          Загрузить картинку
-        </button>
-        {uploadError && <p className="upload-error">{uploadError}</p>}
+        <button onClick={() => fileInputRef.current?.click()} className="px-3 py-1 bg-burgundy-700 text-white rounded">Загрузить картинку</button>
+        {uploadError && <p className="text-red-600 mt-2">{uploadError}</p>}
         {previewImage && (
-          <div className="preview-container">
-            <img src={previewImage} alt="Preview" className="preview-image" />
-            <button onClick={uploadImage} disabled={uploading}>
-              {uploading ? 'Загрузка...' : 'Добавить'}
-            </button>
-            <button onClick={() => { setPreviewImage(null); setSelectedFile(null); }}>
-              Отмена
-            </button>
+          <div className="mt-2 text-center">
+            <img src={previewImage} alt="Preview" className="mx-auto mb-2 max-w-xs" />
+            <div className="flex justify-center gap-2">
+              <button className="px-3 py-1 bg-burnt-600 text-white rounded" onClick={uploadImage} disabled={uploading}>{uploading ? 'Загрузка...' : 'Добавить'}</button>
+              <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => { setPreviewImage(null); setSelectedFile(null); }}>
+                Отмена
+              </button>
+            </div>
           </div>
         )}
       </div>
-
-      <ul className="todo-list">
+      <ul className="space-y-2">
         {todos.map((todo) => (
-          <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+          <li key={todo.id} className={`flex items-center p-2 bg-white rounded shadow-sm ${todo.completed ? 'opacity-70' : ''}`}>
             {todo.hasImage && (
-              <img
-                src={`/api/todos/${todo.id}/image`}
-                alt={todo.text || 'Todo image'}
-                className="todo-image"
-              />
+              <img src={`/api/todos/${todo.id}/image`} alt={todo.text || 'Todo image'} className="w-20 h-20 object-cover rounded mr-3" />
             )}
-            {todo.text && <span className="todo-text">{todo.text}</span>}
-            <input
-              type="checkbox"
-              className="todo-checkbox"
-              checked={todo.completed}
-              onChange={() => toggleTodo(todo.id)}
-            />
-            <button className="todo-delete" onClick={() => deleteTodo(todo.id)}>
-              ×
-            </button>
+            {todo.text && <span className={`flex-1 ${todo.completed ? 'line-through text-gray-500' : ''}`}>{todo.text}</span>}
+            <input type="checkbox" className="w-4 h-4 mr-3" checked={todo.completed} onChange={() => toggleTodo(todo.id)} />
+            <button className="text-gray-500 hover:text-red-600 ml-2" onClick={() => deleteTodo(todo.id)}>×</button>
           </li>
         ))}
       </ul>
