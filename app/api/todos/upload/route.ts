@@ -10,23 +10,14 @@ function getUserId(): string | null {
   return authToken || null;
 }
 
-function parseFormData(request: NextRequest): Promise<{ image: Blob; text?: string }> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const formData = await request.formData();
-      const image = formData.get('image') as Blob | null;
-      const text = formData.get('text') as string | null;
-
-      if (!image) {
-        reject(new Error('No image provided'));
-        return;
-      }
-
-      resolve({ image, text: text || undefined });
-    } catch (err) {
-      reject(err);
-    }
-  });
+async function parseFormData(request: NextRequest): Promise<{ image: Blob; text?: string }> {
+  const formData = await request.formData();
+  const image = formData.get('image') as Blob | null;
+  if (!image) {
+    throw new Error('No image provided');
+  }
+  const text = formData.get('text') as string | null;
+  return { image, text: text ?? undefined };
 }
 
 export async function POST(request: NextRequest) {
@@ -63,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     const todo = await prisma.todo.create({
       data: {
-        text: text || null,
+        text: text ?? null,
         userId,
         image: {
           create: {
