@@ -25,11 +25,17 @@ app/
 └── api/
     ├── auth/route.ts        # POST — логин, GET — проверка авторизации
     ├── auth/logout/route.ts # POST — выход (удаление cookie)
-    └── todos/route.ts       # GET — список, POST — CRUD (add/toggle/delete/edit)
+    └── todos/
+        ├── route.ts         # GET — список, POST — CRUD (add/toggle/delete/edit)
+        ├── upload/route.ts  # POST — загрузка картинки + создание todo
+        ├── upload-audio/route.ts # POST — загрузка/запись аудио + создание todo
+        └── [id]/
+            ├── image/route.ts # GET — отдача бинарного изображения
+            └── audio/route.ts # GET — отдача бинарного аудиофайла
 lib/
 └── prisma.ts                # Prisma client singleton
 prisma/
-└── schema.prisma            # User + Todo модели
+└── schema.prisma            # User + Todo + TodoImage + TodoAudio модели
 types/
 └── todo.ts                  # TypeScript интерфейсы Todo и User
 __tests__/
@@ -56,6 +62,10 @@ __tests__/
 - CRUD операции через единый POST endpoint `/api/todos` с полем `action` в body
 - Возможные action: `add`, `toggle`, `delete`, `edit`
 - Авторизация проверяется через `getUserId()` — чтение cookie `auth_token`
+- **Загрузка изображений**: POST `/api/todos/upload` (FormData: `image`, опционально `text`)
+- **Загрузка аудио**: POST `/api/todos/upload-audio` (FormData: `audio`, опционально `text`, `duration`)
+- **Отдача изображений**: GET `/api/todos/[id]/image` (binary response)
+- **Отдача аудио**: GET `/api/todos/[id]/audio` (binary response)
 
 ### Auth
 
@@ -67,7 +77,7 @@ __tests__/
 ### Database
 
 - PostgreSQL на порту 5433 (docker-compose)
-- Модели: `User` (id, username unique, todos, createdAt), `Todo` (id, text, completed, userId, createdAt, cascade delete)
+- Модели: `User` (id, username unique, todos, createdAt), `Todo` (id, text, completed, userId, image?, audio?, createdAt, cascade delete), `TodoImage` (id, todoId unique, data, mimeType, size, createdAt), `TodoAudio` (id, todoId unique, data, mimeType, size, duration, createdAt)
 - Prisma Client singleton через `globalThis` для предотвращения множественных подключений
 
 ### Testing

@@ -5,6 +5,8 @@ export interface Todo {
   userId: string;
   createdAt: Date | string;
   hasImage: boolean;
+  hasAudio: boolean;
+  audioDuration?: number;
 }
 
 export interface User {

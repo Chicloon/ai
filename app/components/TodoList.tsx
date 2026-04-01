@@ -13,9 +13,30 @@ export default function TodoList() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [audioUploadError, setAudioUploadError] = useState<string | null>(null);
+  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
   useEffect(() => {
     checkAuth();
     fetchTodos();
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (audioPreviewUrl) {
+        URL.revokeObjectURL(audioPreviewUrl);
+      }
+    };
   }, []);
 
   async function checkAuth() {
@@ -136,6 +157,170 @@ export default function TodoList() {
     e.preventDefault();
   }
 
+  function formatDuration(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  async function startRecording() {
+    setAudioUploadError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/ogg';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioPreviewUrl(url);
+        stream.getTracks().forEach((track) => track.stop());
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => {
+          if (prev >= 300) {
+            stopRecording();
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch {
+      setAudioUploadError('Не удалось получить доступ к микрофону');
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }
+
+  function cancelRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setRecordingDuration(0);
+    setAudioBlob(null);
+    if (audioPreviewUrl) {
+      URL.revokeObjectURL(audioPreviewUrl);
+      setAudioPreviewUrl(null);
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }
+
+  async function uploadRecordedAudio() {
+    if (!audioBlob) return;
+    setUploadingAudio(true);
+    setAudioUploadError(null);
+
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('duration', String(recordingDuration));
+
+    try {
+      const res = await fetch('/api/todos/upload-audio', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAudioUploadError(data.error || 'Ошибка загрузки');
+        return;
+      }
+      setTodos(data);
+      clearAudioPreview();
+    } catch {
+      setAudioUploadError('Ошибка загрузки');
+    } finally {
+      setUploadingAudio(false);
+    }
+  }
+
+  function handleAudioFileSelect(file: File) {
+    setAudioUploadError(null);
+    const allowedTypes = ['audio/webm', 'audio/ogg', 'audio/wav', 'audio/mpeg'];
+    if (!allowedTypes.includes(file.type)) {
+      setAudioUploadError('Поддерживаются только WebM, OGG, WAV, MP3');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAudioUploadError('Файл слишком большой (макс. 10MB)');
+      return;
+    }
+    setSelectedAudioFile(file);
+    const url = URL.createObjectURL(file);
+    setAudioPreviewUrl(url);
+    setAudioBlob(file);
+
+    const audio = new Audio(url);
+    audio.onloadedmetadata = () => {
+      setRecordingDuration(audio.duration);
+    };
+  }
+
+  async function uploadAudioFile() {
+    if (!selectedAudioFile) return;
+    setUploadingAudio(true);
+    setAudioUploadError(null);
+
+    const formData = new FormData();
+    formData.append('audio', selectedAudioFile);
+    formData.append('duration', String(recordingDuration));
+
+    try {
+      const res = await fetch('/api/todos/upload-audio', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAudioUploadError(data.error || 'Ошибка загрузки');
+        return;
+      }
+      setTodos(data);
+      clearAudioPreview();
+    } catch {
+      setAudioUploadError('Ошибка загрузки');
+    } finally {
+      setUploadingAudio(false);
+    }
+  }
+
+  function clearAudioPreview() {
+    setAudioBlob(null);
+    setSelectedAudioFile(null);
+    setRecordingDuration(0);
+    if (audioPreviewUrl) {
+      URL.revokeObjectURL(audioPreviewUrl);
+      setAudioPreviewUrl(null);
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header */}
@@ -208,6 +393,75 @@ export default function TodoList() {
         )}
       </div>
 
+      {/* Audio area */}
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-6 text-center hover:border-indigo-400 transition">
+        <input
+          type="file"
+          ref={audioInputRef}
+          accept="audio/webm,audio/ogg,audio/wav,audio/mpeg"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleAudioFileSelect(file);
+          }}
+        />
+        <div className="flex justify-center gap-3">
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition ${
+              isRecording
+                ? 'bg-red-600 hover:bg-red-700 animate-pulse'
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
+          >
+            {isRecording ? `⏹ ${formatDuration(recordingDuration)}` : '🎤 Записать аудио'}
+          </button>
+          <button
+            onClick={() => audioInputRef.current?.click()}
+            className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition"
+          >
+            📎 Прикрепить аудио
+          </button>
+        </div>
+        {isRecording && (
+          <button
+            onClick={cancelRecording}
+            className="mt-2 px-4 py-2 text-gray-500 text-sm hover:text-gray-700 transition"
+          >
+            Отменить запись
+          </button>
+        )}
+        {audioUploadError && <p className="text-red-500 text-sm mt-2">{audioUploadError}</p>}
+        {audioPreviewUrl && (
+          <div className="mt-4">
+            <audio
+              ref={audioPreviewRef}
+              src={audioPreviewUrl}
+              controls
+              className="mx-auto mb-3"
+            />
+            <p className="text-sm text-gray-500 mb-3">
+              Длительность: {formatDuration(recordingDuration)}
+            </p>
+            <div className="flex justify-center gap-2">
+              <button
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                onClick={selectedAudioFile ? uploadAudioFile : uploadRecordedAudio}
+                disabled={uploadingAudio}
+              >
+                {uploadingAudio ? 'Загрузка...' : 'Добавить'}
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition"
+                onClick={clearAudioPreview}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Todo list */}
       <ul className="divide-y divide-gray-100">
         {todos.map((todo) => (
@@ -218,6 +472,21 @@ export default function TodoList() {
                 alt={todo.text || 'Todo image'}
                 className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
               />
+            )}
+            {todo.hasAudio && (
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <span className="text-lg">🎤</span>
+                <audio
+                  src={`/api/todos/${todo.id}/audio`}
+                  controls
+                  className="h-8"
+                />
+                {todo.audioDuration && (
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                    {formatDuration(todo.audioDuration)}
+                  </span>
+                )}
+              </div>
             )}
             {todo.text && (
               <span className={`flex-1 text-gray-900 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
