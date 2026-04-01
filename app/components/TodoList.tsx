@@ -137,55 +137,105 @@ export default function TodoList() {
   }
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow-md">
-      <div className="flex items-center justify-between pb-4 mb-4 border-b">
-        <h1 className="text-xl font-semibold text-white bg-burgundy-900 rounded px-3 py-2">Todo List {username && `(${username})`}</h1>
-        <button className="border border-white text-white rounded px-3 py-1" onClick={logout}>Logout</button>
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 mb-6 border-b border-gray-200">
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Todo List{username && <span className="text-gray-400 font-normal ml-2">({username})</span>}
+        </h1>
+        <button
+          className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          onClick={logout}
+        >
+          Logout
+        </button>
       </div>
-      <div className="mb-4">
+
+      {/* Input */}
+      <div className="mb-6">
         <input
           type="text"
-          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-burgundy-500"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
           placeholder="Add a todo..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>
-      <div className="upload-area border-2 border-dashed border-burgundy-600 rounded p-4 mb-4" onDrop={handleDrop} onDragOver={handleDragOver}>
+
+      {/* Upload area */}
+      <div
+        className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-6 text-center hover:border-indigo-400 transition"
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
         <input
           type="file"
           ref={fileInputRef}
           accept="image/jpeg,image/png"
-          style={{ display: 'none' }}
+          className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFileSelect(file);
           }}
         />
-        <button onClick={() => fileInputRef.current?.click()} className="px-3 py-1 bg-burgundy-700 text-white rounded">Загрузить картинку</button>
-        {uploadError && <p className="text-red-600 mt-2">{uploadError}</p>}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition"
+        >
+          Загрузить картинку
+        </button>
+        {uploadError && <p className="text-red-500 text-sm mt-2">{uploadError}</p>}
         {previewImage && (
-          <div className="mt-2 text-center">
-            <img src={previewImage} alt="Preview" className="mx-auto mb-2 max-w-xs" />
+          <div className="mt-4">
+            <img src={previewImage} alt="Preview" className="mx-auto mb-3 max-w-xs rounded-lg" />
             <div className="flex justify-center gap-2">
-              <button className="px-3 py-1 bg-burnt-600 text-white rounded" onClick={uploadImage} disabled={uploading}>{uploading ? 'Загрузка...' : 'Добавить'}</button>
-              <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => { setPreviewImage(null); setSelectedFile(null); }}>
+              <button
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                onClick={uploadImage}
+                disabled={uploading}
+              >
+                {uploading ? 'Загрузка...' : 'Добавить'}
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition"
+                onClick={() => { setPreviewImage(null); setSelectedFile(null); }}
+              >
                 Отмена
               </button>
             </div>
           </div>
         )}
       </div>
-      <ul className="space-y-2">
+
+      {/* Todo list */}
+      <ul className="divide-y divide-gray-100">
         {todos.map((todo) => (
-          <li key={todo.id} className={`flex items-center p-2 bg-white rounded shadow-sm ${todo.completed ? 'opacity-70' : ''}`}>
+          <li key={todo.id} className={`flex items-center gap-3 py-3 ${todo.completed ? 'opacity-60' : ''}`}>
             {todo.hasImage && (
-              <img src={`/api/todos/${todo.id}/image`} alt={todo.text || 'Todo image'} className="w-20 h-20 object-cover rounded mr-3" />
+              <img
+                src={`/api/todos/${todo.id}/image`}
+                alt={todo.text || 'Todo image'}
+                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+              />
             )}
-            {todo.text && <span className={`flex-1 ${todo.completed ? 'line-through text-gray-500' : ''}`}>{todo.text}</span>}
-            <input type="checkbox" className="w-4 h-4 mr-3" checked={todo.completed} onChange={() => toggleTodo(todo.id)} />
-            <button className="text-gray-500 hover:text-red-600 ml-2" onClick={() => deleteTodo(todo.id)}>×</button>
+            {todo.text && (
+              <span className={`flex-1 text-gray-900 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
+                {todo.text}
+              </span>
+            )}
+            <input
+              type="checkbox"
+              className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              checked={todo.completed}
+              onChange={() => toggleTodo(todo.id)}
+            />
+            <button
+              className="text-gray-400 hover:text-red-500 text-xl leading-none ml-1 transition"
+              onClick={() => deleteTodo(todo.id)}
+            >
+              ×
+            </button>
           </li>
         ))}
       </ul>
