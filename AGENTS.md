@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Todo List App — Next.js приложение с PostgreSQL и авторизацией по username.
+Todo List App — Next.js приложение с PostgreSQL и авторизацией по username. Интерфейс: тёмная тема на Tailwind, шрифты через `next/font`.
 
 ## Tech Stack
 
@@ -11,25 +11,34 @@ Todo List App — Next.js приложение с PostgreSQL и авториза
 - **Database**: PostgreSQL 15 (Docker)
 - **ORM**: Prisma 5
 - **Testing**: Vitest + React Testing Library + jsdom
-- **Styling**: Vanilla CSS
+- **Styling**: Tailwind CSS 3 (кастомные цвета `burgundy` / `burnt` в [tailwind.config.js](tailwind.config.js))
+- **Fonts**: [Inter](https://fonts.google.com/specimen/Inter) — основной текст (layout); [Marck Script](https://fonts.google.com/specimen/Marck+Script) — имя пользователя в шапке TodoList (прописной стиль)
+
+## UI
+
+- Тёмный фон (градиент slate), карточки с полупрозрачным фоном и рамкой.
+- Страницы `/` и `/login` визуально согласованы (фокус-кольца, акцентные кнопки).
+- Глобальные стили: [app/globals.css](app/globals.css) — директивы Tailwind, минимальный reset, `color-scheme: dark`.
 
 ## Project Structure
 
 ```
 app/
 ├── page.tsx                 # Главная страница (TodoList)
-├── layout.tsx               # Root layout
-├── globals.css              # Глобальные стили
+├── layout.tsx               # Root layout (Inter, фон body)
+├── globals.css              # Tailwind + базовый reset
 ├── login/page.tsx           # Страница логина
-├── components/TodoList.tsx  # Клиентский компонент списка задач
+├── components/TodoList.tsx  # Список задач, загрузка изображений
 └── api/
     ├── auth/route.ts        # POST — логин, GET — проверка авторизации
     ├── auth/logout/route.ts # POST — выход (удаление cookie)
-    └── todos/route.ts       # GET — список, POST — CRUD (add/toggle/delete/edit)
+    ├── todos/route.ts       # GET — список, POST — CRUD (add/toggle/delete/edit)
+    ├── todos/upload/route.ts # POST — загрузка картинки (JPEG/PNG)
+    └── todos/[id]/image/route.ts # GET — отдача изображения todo
 lib/
 └── prisma.ts                # Prisma client singleton
 prisma/
-└── schema.prisma            # User + Todo модели
+└── schema.prisma            # User, Todo, TodoImage
 types/
 └── todo.ts                  # TypeScript интерфейсы Todo и User
 __tests__/
@@ -55,6 +64,7 @@ __tests__/
 - Все API route'ы требуют `auth_token` cookie (кроме POST /api/auth)
 - CRUD операции через единый POST endpoint `/api/todos` с полем `action` в body
 - Возможные action: `add`, `toggle`, `delete`, `edit`
+- Загрузка изображений: POST `/api/todos/upload` (multipart), выдача: GET `/api/todos/[id]/image`
 - Авторизация проверяется через `getUserId()` — чтение cookie `auth_token`
 
 ### Auth
@@ -67,7 +77,7 @@ __tests__/
 ### Database
 
 - PostgreSQL на порту 5433 (docker-compose)
-- Модели: `User` (id, username unique, todos, createdAt), `Todo` (id, text, completed, userId, createdAt, cascade delete)
+- Модели: `User`, `Todo` (text опционален для задач с картинкой), `TodoImage` (bytes + mime), cascade delete
 - Prisma Client singleton через `globalThis` для предотвращения множественных подключений
 
 ### Testing
