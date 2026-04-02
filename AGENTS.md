@@ -28,17 +28,21 @@ app/
 ├── layout.tsx               # Root layout (Inter, фон body)
 ├── globals.css              # Tailwind + базовый reset
 ├── login/page.tsx           # Страница логина
-├── components/TodoList.tsx  # Список задач, загрузка изображений
+├── components/TodoList.tsx  # Список задач, загрузка изображений и аудио
 └── api/
     ├── auth/route.ts        # POST — логин, GET — проверка авторизации
     ├── auth/logout/route.ts # POST — выход (удаление cookie)
-    ├── todos/route.ts       # GET — список, POST — CRUD (add/toggle/delete/edit)
-    ├── todos/upload/route.ts # POST — загрузка картинки (JPEG/PNG)
-    └── todos/[id]/image/route.ts # GET — отдача изображения todo
+    └── todos/
+        ├── route.ts         # GET — список, POST — CRUD (add/toggle/delete/edit)
+        ├── upload/route.ts  # POST — загрузка картинки + создание todo
+        ├── upload-audio/route.ts # POST — загрузка/запись аудио + создание todo
+        └── [id]/
+            ├── image/route.ts # GET — отдача бинарного изображения
+            └── audio/route.ts # GET — отдача бинарного аудиофайла
 lib/
 └── prisma.ts                # Prisma client singleton
 prisma/
-└── schema.prisma            # User, Todo, TodoImage
+└── schema.prisma            # User, Todo, TodoImage, TodoAudio
 types/
 └── todo.ts                  # TypeScript интерфейсы Todo и User
 __tests__/
@@ -64,8 +68,11 @@ __tests__/
 - Все API route'ы требуют `auth_token` cookie (кроме POST /api/auth)
 - CRUD операции через единый POST endpoint `/api/todos` с полем `action` в body
 - Возможные action: `add`, `toggle`, `delete`, `edit`
-- Загрузка изображений: POST `/api/todos/upload` (multipart), выдача: GET `/api/todos/[id]/image`
 - Авторизация проверяется через `getUserId()` — чтение cookie `auth_token`
+- **Загрузка изображений**: POST `/api/todos/upload` (FormData: `image`, опционально `text`)
+- **Загрузка аудио**: POST `/api/todos/upload-audio` (FormData: `audio`, опционально `text`, `duration`)
+- **Отдача изображений**: GET `/api/todos/[id]/image` (binary)
+- **Отдача аудио**: GET `/api/todos/[id]/audio` (binary)
 
 ### Auth
 
@@ -77,7 +84,7 @@ __tests__/
 ### Database
 
 - PostgreSQL на порту 5433 (docker-compose)
-- Модели: `User`, `Todo` (text опционален для задач с картинкой), `TodoImage` (bytes + mime), cascade delete
+- Модели: `User` (id, username unique, todos, createdAt); `Todo` (id, text?, completed, userId, createdAt, cascade delete); `TodoImage` (todoId unique, data, mimeType, size); `TodoAudio` (todoId unique, data, mimeType, size, duration)
 - Prisma Client singleton через `globalThis` для предотвращения множественных подключений
 
 ### Testing

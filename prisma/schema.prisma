@@ -21,6 +21,7 @@ model Todo {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   image     TodoImage?
+  audio     TodoAudio?
   createdAt DateTime @default(now())
 }
 
@@ -31,5 +32,16 @@ model TodoImage {
   data      Bytes
   mimeType  String
   size      Int
+  createdAt DateTime @default(now())
+}
+
+model TodoAudio {
+  id        String   @id @default(cuid())
+  todoId    String   @unique
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  data      Bytes
+  mimeType  String
+  size      Int
+  duration  Float
   createdAt DateTime @default(now())
 }

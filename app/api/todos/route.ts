@@ -15,15 +15,25 @@ function serializeTodos(todos: any[]) {
     userId: t.userId,
     createdAt: t.createdAt.toISOString(),
     hasImage: !!t.image,
+    hasAudio: !!t.audio,
+    audioDuration: t.audio?.duration,
   }));
 }
 
-const imageInclude = {
+const attachmentsInclude = {
   image: {
     select: {
       id: true,
       mimeType: true,
       size: true,
+    },
+  },
+  audio: {
+    select: {
+      id: true,
+      mimeType: true,
+      size: true,
+      duration: true,
     },
   },
 };
@@ -37,7 +47,7 @@ export async function GET() {
   const todos = await prisma.todo.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
-    include: imageInclude,
+    include: attachmentsInclude,
   });
 
   return NextResponse.json(serializeTodos(todos));
@@ -65,7 +75,7 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: imageInclude,
+      include: attachmentsInclude,
     });
     return NextResponse.json(serializeTodos(todos));
   }
@@ -81,7 +91,7 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: imageInclude,
+      include: attachmentsInclude,
     });
     return NextResponse.json(serializeTodos(todos));
   }
@@ -94,7 +104,7 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: imageInclude,
+      include: attachmentsInclude,
     });
     return NextResponse.json(serializeTodos(todos));
   }
@@ -110,7 +120,7 @@ export async function POST(request: NextRequest) {
     const todos = await prisma.todo.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: imageInclude,
+      include: attachmentsInclude,
     });
     return NextResponse.json(serializeTodos(todos));
   }
